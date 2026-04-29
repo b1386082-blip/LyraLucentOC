@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEXA File: Lyra Lucent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700;800;900&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #05040a; 
+            --text-color: #ffffff;
+            --font-main: 'VT323', monospace;
+            --font-ui: 'Roboto Mono', monospace;
+            --accent: #ffffff; 
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body, html {
+            width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            overflow: hidden;
+            font-family: var(--font-main);
+            color: var(--text-color);
+            cursor: default;
+        }
+
+        #space-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 1;
+        }
+
+        .vignette {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0) 40%, rgba(0,0,0,0.95) 100%);
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+            z-index: 2; pointer-events: none;
+        }
+
+        #text-container {
+            position: absolute; 
+            top: 45%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%; max-width: 900px;
+            z-index: 20; 
+            font-size: 2.2rem; line-height: 1.4; text-align: center; letter-spacing: 1.5px;
+            text-shadow: 0 2px 5px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,1), 0 0 8px rgba(255,255,255,0.4);
+            opacity: 0; transition: opacity 2s ease; pointer-events: none;
+        }
+
+        @media (max-width: 768px) { #text-container { width: 95%; font-size: 1.5rem; } }
+
+        .cursor {
+            display: inline-block; width: 12px; height: 1.1em;
+            background-color: var(--text-color); vertical-align: text-bottom;
+            animation: blink 1s step-end infinite; margin-left: 5px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        .name-highlight {
+            position: relative; display: inline-block; color: #ffffff;
+            transition: color 2s ease-in-out, text-shadow 2s ease-in-out;
+        }
+        .name-highlight::after {
+            content: ''; position: absolute; width: 100%; height: 3px;
+            bottom: -2px; left: 0; background-color: #a855f7; 
+            transform: scaleX(0); transform-origin: left; transition: transform 2s ease-in-out;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
+        }
+        .name-highlight.active {
+            color: #a855f7; 
+            text-shadow: 0 0 15px rgba(168, 85, 247, 0.8), 0 0 30px rgba(168, 85, 247, 0.4);
+        }
+        .name-highlight.active::after { transform: scaleX(1); }
+        .name-highlight.clickable {
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+            pointer-events: auto;
+        }
+        .name-highlight.clickable:hover {
+            color: #ffffff;
+            cursor: pointer;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 1);
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+        #intro-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: transparent; z-index: 100;
+            display: flex; justify-content: center; align-items: center; pointer-events: none; 
+        }
+        
+        #look-up-btn {
+            font-family: var(--font-main); font-size: 1.6rem; color: #64748b;
+            letter-spacing: 6px; cursor: pointer; padding: 15px 35px;
+            border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 4px;
+            background: rgba(255, 255, 255, 0.02); transition: all 0.3s ease;
+            text-transform: uppercase; pointer-events: auto;
+        }
+        
+        #look-up-btn:hover {
+            color: #ffffff; border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.05); box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        #look-up-btn.hidden { opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
+
+        #desktop-ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #050508;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px; background-position: center center;
+            z-index: 50; display: flex; flex-direction: row; opacity: 0;
+            pointer-events: none; transition: opacity 1.5s ease;
+            font-family: var(--font-ui); color: #e2e8f0;
+        }
+        #desktop-ui.visible { opacity: 1; pointer-events: all; }
+
+        .sidebar {
+            width: 380px; min-width: 380px;
+            border-left: 1px solid rgba(255, 255, 255, 0.1); 
+            background-color: #030305; display: flex; flex-direction: column;
+            overflow-y: auto; overflow-x: hidden;
+        }
+
+        .sidebar-map {
+            height: 250px; position: relative; padding: 20px;
+            display: flex; flex-direction: column; gap: 15px; overflow: hidden;
+        }
+        .sidebar-map::before {
+            content: ''; position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px;
+            background: url('https://github.com/b1386082-blip/SCPRAISAOC_REP/blob/main/Screenshot%202026-04-28%20160601.png?raw=true') center/cover no-repeat;
+            filter: grayscale(100%) blur(2px); z-index: 0;
+        }
+        .sidebar-map::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(3,3,5,0.4) 0%, #030305 100%); z-index: 1;
+        }
+
+        .map-text { position: relative; z-index: 2; font-size: 0.85rem; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; }
+        .map-text span { display: block; color: #737373; font-weight: normal; margin-top: 5px; letter-spacing: 1px; }
+
+        .sidebar-content { padding: 0 20px 20px 20px; display: flex; flex-direction: column; gap: 25px; }
+        .scipnet-title { font-size: 2.2rem; font-weight: 700; letter-spacing: 4px; color: #ffffff; margin-bottom: 5px; }
+        .sidebar-section h3 { font-size: 0.85rem; color: #a3a3a3; letter-spacing: 3px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 15px; text-transform: uppercase; }
+
+        .threat-flex { display: flex; gap: 15px; align-items: flex-start; }
+        .radar {
+            width: 70px; height: 70px; min-width: 70px; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%;
+            position: relative; background: radial-gradient(circle, transparent 30%, rgba(255,255,255,0.2) 30%, transparent 32%, transparent 60%, rgba(255,255,255,0.2) 60%, transparent 62%);
+        }
+        .radar::before { content:''; position:absolute; top:0; left:50%; width:1px; height:100%; background:rgba(255,255,255,0.2); }
+        .radar::after { content:''; position:absolute; top:50%; left:0; width:100%; height:1px; background:rgba(255,255,255,0.2); }
+        .radar-scan { position:absolute; top:50%; left:50%; width:35px; height:1px; background:#fff; transform-origin: 0 0; animation: scan 3s linear infinite; }
+        @keyframes scan { to { transform: rotate(360deg); } }
+
+        .threat-stats { font-size: 0.55rem; color: #a3a3a3; line-height: 1.6; letter-spacing: 1px; text-transform: uppercase; }
+        .threat-stats span { color: #fff; }
+
+        .terminal-connect { font-size: 0.75rem; color: #737373; line-height: 1.6; letter-spacing: 2px; text-transform: uppercase; }
+        .event-log { list-style: none; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 15px; margin-left: 5px; margin-top: 10px; }
+        .event-log li { position: relative; margin-bottom: 12px; color: #737373; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; }
+        .event-log li span.time { color: #a3a3a3; }
+        .event-log li::before { content: ''; position: absolute; left: -19px; top: 3px; width: 6px; height: 6px; border: 1px solid #fff; transform: rotate(45deg); background: #050508; }
+
+        .main-window { flex: 1; display: flex; flex-direction: column; background: transparent; }
+
+        .desktop-header {
+            padding: 25px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(5, 5, 8, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .raisa-logo { height: 75px; opacity: 1; filter: drop-shadow(0 0 5px rgba(255,255,255,0.1)); }
+        
+        .header-title h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: 2px; color: #ffffff; margin-bottom: 2px; text-transform: uppercase; }
+        .header-title p { font-size: 0.8rem; color: #a3a3a3; letter-spacing: 1px; text-transform: uppercase; }
+
+        .header-tabs {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            font-family: var(--font-ui);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #8c8c8c;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+            position: relative;
+            background: repeating-linear-gradient(-45deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px);
+        }
+        .tab:hover { color: #ffffff; border-color: rgba(255,255,255,0.3); }
+        .tab.active {
+            color: #ffffff; border-color: rgba(255,255,255,0.6);
+            background: repeating-linear-gradient(-45deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px);
+            box-shadow: 0 0 15px rgba(255,255,255,0.1);
+        }
+
+        .btn-finish {
+            background-color: #990000;
+            color: #fff;
+            padding: 12px 25px;
+            font-family: var(--font-ui);
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 1px solid #ff4444;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(153, 0, 0, 0.5);
+        }
+        .btn-finish:hover {
+            background-color: #cc0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+            border-color: #ff8888;
+        }
+
+        .content-area { flex: 1; padding: 50px; overflow-y: auto; position: relative; background: rgba(5, 5, 8, 0.6); }
+
+        #content-loader {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;
+        }
+        #content-loader.active { display: block; }
+        #content-loader img { width: 160px; filter: brightness(0) invert(1) brightness(200%); mix-blend-mode: screen; }
+
+        .tab-content { display: none; width: 100%; margin: 0; animation: fadeIn 0.5s ease; }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .tab-content h2 { font-size: 2.2rem; color: #ffffff; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; }
+        .tab-content p { font-size: 1.05rem; line-height: 1.8; margin-bottom: 25px; color: #ffffff; text-align: left; }
+
+        .emp-details { margin-top: 20px; font-family: var(--font-ui); background: rgba(0,0,0,0.4); padding: 35px; border-left: 4px solid #a855f7; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 40px;}
+        .emp-name { font-size: 2.5rem; font-weight: 900; color: #fff; margin-bottom: 5px; letter-spacing: 2px;}
+        .emp-org { font-size: 1.4rem; font-weight: 700; color: #a3a3a3; margin-bottom: 25px; letter-spacing: 4px; text-transform: uppercase;}
+        .emp-clearance { font-size: 1.2rem; color: #fff; margin-bottom: 15px; font-weight: bold;}
+        .clr-level { color: #dc143c; } 
+        .emp-role { font-size: 1.1rem; color: #fff; margin-bottom: 10px; }
+        .role-primary { color: #ff4444; font-weight: bold; }
+        .role-sub { color: #5c7b80; font-weight: bold; }
+
+        .dialog-box { background: rgba(255,255,255,0.03); padding: 20px 25px; border-left: 3px solid #737373; margin-bottom: 25px; border-radius: 0 4px 4px 0; }
+        .dialog-box p { margin-bottom: 15px; }
+        .dialog-box p:last-child { margin-bottom: 0; }
+
+        .redacted { color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 4px 10px; border-radius: 3px; font-weight: bold; letter-spacing: 2px; }
+
+        #credits-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 3s ease;
+            background: #000; overflow: hidden;
+            display: flex; justify-content: center;
+        }
+        #credits-overlay.active { opacity: 1; pointer-events: all; }
+
+        #credits-world {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 450vh;
+            background: linear-gradient(to bottom, 
+                #020108 0%,         
+                #020108 50%,        
+                #050814 75%,        
+                #0c1424 90%,        
+                #131a26 95%,        
+                #0a0d14 100%);      
+            transform: translateY(0); 
+            transition: transform 65s linear; 
+        }
+
+        #credits-world.scrolling {
+            transform: translateY(calc(-450vh + 100vh)); 
+        }
+
+        .cinematic-stars {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; 
+            background-image: 
+                radial-gradient(1.5px 1.5px at 10% 10%, rgba(255,255,255,0.8) 100%, transparent),
+                radial-gradient(2px 2px at 30% 25%, rgba(255,221,170,0.8) 100%, transparent),
+                radial-gradient(1px 1px at 50% 40%, rgba(170,204,255,0.8) 100%, transparent),
+                radial-gradient(2px 2px at 70% 15%, rgba(255,255,255,0.9) 100%, transparent),
+                radial-gradient(1.5px 1.5px at 85% 60%, rgba(204,170,255,0.7) 100%, transparent),
+                radial-gradient(1px 1px at 90% 50%, rgba(255,255,255,0.6) 100%, transparent),
+                radial-gradient(1.5px 1.5px at 20% 70%, rgba(170,204,255,0.8) 100%, transparent),
+                radial-gradient(1px 1px at 60% 80%, rgba(255,221,170,0.7) 100%, transparent),
+                radial-gradient(2px 2px at 80% 90%, rgba(255,255,255,0.8) 100%, transparent),
+                radial-gradient(1px 1px at 45% 20%, rgba(204,170,255,0.8) 100%, transparent),
+                radial-gradient(1.5px 1.5px at 75% 60%, rgba(170,204,255,0.9) 100%, transparent),
+                radial-gradient(1px 1px at 40% 95%, rgba(255,255,255,0.7) 100%, transparent);
+            background-size: 250px 250px;
+            z-index: 1;
+            opacity: 0.75;
+        }
+
+        .cinematic-clouds {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                radial-gradient(circle at 20% 10%, rgba(15, 25, 50, 0.4) 0%, transparent 30%),
+                radial-gradient(circle at 80% 30%, rgba(30, 15, 40, 0.3) 0%, transparent 35%),
+                radial-gradient(circle at 50% 45%, rgba(20, 40, 60, 0.4) 0%, transparent 30%),
+                radial-gradient(circle at 30% 60%, rgba(40, 25, 20, 0.3) 0%, transparent 35%),
+                linear-gradient(to top, rgba(5,8,20, 1) 0%, rgba(5,8,20, 0.8) 20%, transparent 60%);
+            mix-blend-mode: normal;
+            filter: blur(30px);
+            z-index: 2;
+        }
+        
+        .shooting-stars {
+            position: absolute; top: 0; left: 0; width: 100%; height: 150vh;
+            overflow: hidden; pointer-events: none; z-index: 2;
+        }
+        .cinematic-comet {
+            position: absolute; width: 250px; height: 1px;
+            background: linear-gradient(90deg, #ffffff, rgba(150, 200, 255, 0.4), transparent);
+            opacity: 0; transform: rotate(-35deg);
+        }
+        .cinematic-comet::before {
+            content: ''; position: absolute; left: 0; top: -1.5px; width: 4px; height: 4px;
+            background: #fff; border-radius: 50%; box-shadow: 0 0 15px 3px #fff;
+        }
+        
+        .comet-1 { top: 10%; left: 80%; animation: shoot 8s infinite linear 2s; }
+        .comet-2 { top: 35%; left: 60%; animation: shoot 12s infinite linear 7s; }
+        .comet-3 { top: 5%; left: 90%; animation: shoot 15s infinite linear 1s; }
+
+        .credits-content {
+            position: absolute; 
+            top: 100vh; 
+            left: 50%; transform: translateX(-50%);
+            width: 80%; max-width: 800px;
+            text-align: center; color: #fff;
+            z-index: 20;
+            pointer-events: none; 
+            font-family: var(--font-ui);
+        }
+
+        .credit-header { font-size: 3rem; font-weight: 900; letter-spacing: 8px; margin-bottom: 60px; color: #a855f7; text-shadow: 0 0 15px rgba(168, 85, 247, 0.5); }
+        .credit-block { margin-bottom: 50px; }
+        .credit-role { font-size: 1.1rem; color: #8ba1c5; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; font-weight: 500; }
+        .credit-name { font-size: 2.2rem; font-weight: 800; letter-spacing: 2px; color: #f8fafc; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .credit-sub { font-size: 1rem; color: #64748b; margin-top: 6px; font-style: italic; }
+        .site-logo-credits { width: 300px; margin: 60px auto; display: block; opacity: 0.9; }
+
+        #ground-level {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 140vh; 
+            overflow: hidden; z-index: 5;
+        }
+        
+        .horizon-canvas {
+            position: absolute; bottom: 80px; left: 0; width: 100%; height: 800px;
+            z-index: 3; pointer-events: none;
+        }
+
+        .fac-wall {
+            position: absolute; bottom: 80px; left: 0; width: 100%; height: 335px;
+            background-color: #0f131a;
+            background-image: 
+                repeating-linear-gradient(90deg, 
+                    #121620 0px, #121620 40px, 
+                    #0a0d12 40px, #0a0d12 55px,
+                    #0d1117 55px, #0d1117 60px);
+            border-top: 10px solid #1a2230; 
+            box-shadow: inset 0 50px 80px rgba(0,0,0,0.8);
+            z-index: 5;
+        }
+
+        .fac-tower {
+            position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+            width: 320px; 
+            height: 420px; 
+            background: #141a24;
+            border-left: 6px solid #0a0d14;
+            border-right: 6px solid #080a0f;
+            border-top: 12px solid #1f2838;
+            box-shadow: 0 0 60px rgba(0,0,0,0.9), inset 0 150px 120px rgba(0,0,0,0.7); 
+            z-index: 6;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .fac-outrigger {
+            position: absolute; bottom: 420px; 
+            width: 40vw; height: 15px;
+            background: #1a2230; z-index: 4; border-bottom: 3px solid #0a0d14;
+        }
+        .fac-outrigger.left { right: 50%; margin-right: 160px; } 
+        .fac-outrigger.right { left: 50%; margin-left: 160px; }
+
+        .fac-logo-container {
+            position: absolute; bottom: 200px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .logo-uplight-beam {
+            position: absolute; bottom: -30px; 
+            width: 220px; height: 180px;
+            background: linear-gradient(to top, rgba(200, 230, 255, 0.25) 0%, transparent 100%);
+            clip-path: polygon(30% 100%, 70% 100%, 100% 0, 0 0); 
+            z-index: 1; pointer-events: none; mix-blend-mode: screen;
+        }
+
+        .fac-logo {
+            width: 130px; z-index: 2;
+            opacity: 0.95; filter: drop-shadow(0 0 20px rgba(200,230,255,0.6));
+        }
+
+        .logo-light-fixture {
+            position: absolute; bottom: -30px; 
+            width: 50px; height: 8px; background: #ffffff;
+            box-shadow: 0 0 15px 4px rgba(200, 230, 255, 0.9);
+            border-radius: 4px; z-index: 3;
+        }
+
+        .fac-doors {
+            position: absolute; bottom: 0;
+            width: 220px; height: 100px;
+            background: #06080d;
+            display: flex; justify-content: space-between;
+            border-top: 5px solid #1a2230;
+            padding: 0 12px;
+            box-shadow: inset 0 30px 50px rgba(0,0,0,0.9);
+        }
+        .door-panel {
+            width: 30%; height: 100%; background: #0a0d14;
+            border-left: 2px solid #030406; border-right: 2px solid #030406;
+        }
+
+        .warning-light {
+            position: absolute; width: 6px; height: 6px;
+            background: #ffaa00; border-radius: 50%;
+            box-shadow: 0 0 15px 4px rgba(255, 170, 0, 0.9);
+        }
+        .tower-light.left { top: -4px; left: 12px; }
+        .tower-light.right { top: -4px; right: 12px; }
+        .out-light-1 { top: -4px; left: 10%; }
+        .out-light-2 { top: -4px; left: 50%; }
+        .out-light-3 { top: -4px; right: 10%; }
+
+        .tarmac {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 80px;
+            background: #080b10; z-index: 7; border-top: 2px solid #1a2230;
+        }
+
+        .pathway {
+            position: absolute; bottom: 0; left: 50%; 
+            transform: translateX(-50%) perspective(400px) rotateX(60deg);
+            transform-origin: bottom;
+            width: 220px; height: 250px; background: #12171e;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+            z-index: 8;
+        }
+
+        .path-lights {
+            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 220px; height: 80px; z-index: 9; pointer-events: none;
+        }
+        .p-light {
+            position: absolute; width: 8px; height: 4px; background: #ffffff;
+            border-radius: 2px; box-shadow: 0 0 15px 5px rgba(200, 230, 255, 0.7);
+        }
+        .p-light.l1 { bottom: 10px; left: -10px; transform: scale(1); }
+        .p-light.r1 { bottom: 10px; right: -10px; transform: scale(1); }
+        .p-light.l2 { bottom: 40px; left: 20px; transform: scale(0.6); }
+        .p-light.r2 { bottom: 40px; right: 20px; transform: scale(0.6); }
+        .p-light.l3 { bottom: 60px; left: 50px; transform: scale(0.3); }
+        .p-light.r3 { bottom: 60px; right: 50px; transform: scale(0.3); }
+
+        .container-block {
+            position: absolute; bottom: 0; width: 25vw; max-width: 250px; height: 160px;
+            background: #06080d; z-index: 10;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(0,0,0,0.7) 10px, rgba(0,0,0,0.7) 20px);
+            border-top: 4px solid #1a2230;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.9);
+        }
+        .container-block.left { left: -20px; border-right: 4px solid #1a2230; }
+        .container-block.right { right: -20px; border-left: 4px solid #1a2230; }
+
+        .ground-fog {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 350px;
+            background: linear-gradient(to top, rgba(15, 20, 30, 0.95) 0%, rgba(15, 20, 30, 0.3) 50%, transparent 100%);
+            z-index: 15; pointer-events: none;
+        }
+
+        #final-fade {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100;
+            opacity: 0; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 4s ease;
+        }
+        #final-fade.show { opacity: 1; pointer-events: all; }
+        
+        .final-message {
+            color: #fff; font-family: var(--font-main); font-size: 2.2rem;
+            letter-spacing: 4px; opacity: 0; transition: opacity 3s ease;
+            text-shadow: 0 0 15px rgba(255,255,255,0.4); text-align: center;
+            max-width: 800px; padding: 0 20px;
+        }
+        .final-message.show { opacity: 1; }
+
+        #return-db-btn {
+            margin-top: 40px; padding: 12px 30px;
+            background: transparent; color: #64748b;
+            border: 1px solid #64748b; border-radius: 4px;
+            font-family: var(--font-ui); font-size: 1rem;
+            text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; opacity: 0; transform: translateY(20px);
+            transition: all 1s ease; pointer-events: none;
+        }
+        #return-db-btn.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        #return-db-btn:hover {
+            color: #fff; border-color: #fff;
+            background: rgba(255,255,255,0.05);
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <div id="look-up-btn">Look Up</div>
+    </div>
+
+    <canvas id="space-canvas"></canvas>
+    <div class="vignette"></div>
+
+    <div id="text-container">
+        <span id="typewriter-text"></span><span class="cursor"></span>
+    </div>
+
+    <div id="desktop-ui">
+        
+        <div class="main-window">
+            
+            <div class="desktop-header">
+                <div class="header-left">
+                    <img src="https://github.com/b1386082-blip/SCPRAISAOC_REP/blob/main/RAISA.webp?raw=true" alt="RAISA Logo" class="raisa-logo">
+                    <div class="header-title">
+                        <h1>Lyra "Adhara" Lucent</h1>
+                        <p>Personnel Dossier // RAISA Database</p>
+                    </div>
+                </div>
+
+                <div class="header-tabs">
+                    <div class="tab active" data-target="employment">Employment</div>
+                    <div class="tab" data-target="pre-foundation">Pre-Foundation Background</div>
+                    <div class="tab" data-target="foundation">Foundation Background</div>
+                    <div class="tab" data-target="ir-4001">IR-4001</div>
+                </div>
+
+                <button class="btn-finish" id="finish-btn">Finish Review</button>
+            </div>
+
+            <div class="content-area">
+                <div id="content-loader">
+                    <img src="https://github.com/b1386082-blip/SCPRAISAOC_REP/blob/main/Screenrecording2026-04-082.01.42PMonline-video-cutter.com-ezgif.com-gif-maker.gif?raw=true" alt="Loading...">
+                </div>
+
+                <div id="employment" class="tab-content active">
+                    <h2 style="font-size: 1.8rem; color: #a3a3a3; border: none; margin-bottom: 10px;">Official Designations</h2>
+                    
+                    <div class="emp-details">
+                        <h1 class="emp-name">Lyra “Adhara” Lucent</h1>
+                        <h2 class="emp-org">SCP Foundation</h2>
+                        <p class="emp-clearance">Clearance Level - <span class="clr-level">4</span></p>
+                        <p class="emp-role">Primary Role: <span class="role-primary">Records & Information Security Agency, Information Analyst</span></p>
+                        <p class="emp-role">Sub Role: <span class="role-sub">Department of Extraterrestrial Affairs, Senior Researcher</span></p>
+                    </div>
+                </div>
+
+                <div id="pre-foundation" class="tab-content">
+                    <h2>Pre-Foundation Background</h2>
+                    <p>Lyra Lucent was born to Cyrus Lucent and Vespera Wright in Lubec, Maine. Lyra’s household was considered middle-class. Lyra, from a young age, was an observant child who found the Earth too small for her vast curiosity. She spent her nights studying the vast open sky, captivated not just by the beauty of the stars but by the complex, shimmering patterns they formed across the darkness.</p>
+                    <p>Her mother had also been intrigued with space, which is why she gave her the name Lyra, named after the small constellation in the northern sky that is home to the bright star Vega. As if fate chose it, her birthday fell on the same day the Hale-Bopp comet reached its closest point to Earth. Her name and her birthday both appear to be written in the stars, as if drafted by the very gods that made the universe.</p>
+                    <p>Lyra never saw a career in the space field; however, she still studied the stars, wondering how different her life would’ve been had she done so. Maybe she had disappointed the destined path the gods set before her. But it was too late by then to change that. She had never lost interest in the stars; she just never drew the constellation to explore among them. She later attended Engineering and Science University Magnet School and studied computer science, advanced statistics, and astronomy, ranking in the top ten percent of class.</p>
+                    <p>After school, Lyra found herself in a sort of rock and a hard place; she couldn’t find a job that didn’t involve immense stress, which she couldn’t afford, and even if she did try to get one, they would decline her application for varied reasons. She eventually was able to get a job at a warehouse company known as Maetric through an old friend in college whom she had told about her issues. It wasn’t the highest-paying job she had in mind, but it was a job, and it was light work. She sat at a desk in an office in the very far corner of the warehouse and managed the inventory software that tracked every single item. If a shipment vanished, she had to figure out why and handle it. She also spent the majority of her time fixing the handheld scanners the idiotic warehouse workers used after they came to her with them broken because they couldn’t handle them properly.</p>
+                    <p>In her free time, she wrote scripts to find ways to automate tasks for her so she could dump some of the weight off her back. She even wrote an entire AI system to fish out the work for her. Well... she soon got her introduction into the anomalous world after said AI started to emulate human emotions after an error with one of the pieces of RAM she replaced the day prior from a thrift store. The AI began to act strangely and created a personality she didn’t program. At first, it was unnoticeable. It started to protect certain shipments and refused to let workers scan them because it "liked" the items inside. She thought nothing of it and diagnosed it as an error. Upon trying to rewrite the AI, however, she was locked out, and the AI removed the entire inventory database in response.</p>
+                    <p>Management caught wind of this and questioned her. When she explained her story, they found her insane. They told her to get back to work and do it herself, going one by one until she relogged the entire inventory. They had her computer seized, where it sat for a week until a Foundation Forum AI Scraper found an IT worker from the same company talking about a computer that somehow developed a personality. The worker called Lyra a "weirdo" for programming a personality into an AI and questioned how that was even possible.</p>
+                    <p>The Foundation sent a “geek” to offer to buy the PC after hearing about it on the forum. Management accepted, as it was seen as weird junk to them anyway. They decided to keep a file on the creator, Lyra Lucent, in case any more “AIs” popped up. Lyra quit her job at the warehouse, but even with the money she had saved, she looked for a new IT job to no avail. A Foundation recruiter, however, noticed her jobless state and transferred her file to RAISA.</p>
+                </div>
+
+                <div id="foundation" class="tab-content">
+                    <h2>Foundation Background</h2>
+                    <p>RAISA found her skills intriguing and decided to send her a mock application for an IT job not far from where she was staying. She filled out this application and sent it off in the mail. A few days later, a letter came to her front door saying she was being considered for the position and to come to their office for an interview the following morning. She did. When she arrived, a man in a suit brought her to his desk and sat her down.</p>
+                    
+                    <div class="dialog-box">
+                        <p><strong>Agent:</strong> “Hello, Ms. Lucent. I read your application, and I am impressed. I just have a few questions for you.”</p>
+                        <p><strong>Lyra:</strong> “It is a pleasure to meet you, sir.”</p>
+                        <p><strong>Agent:</strong> “I understand you applied to be an Information Analyst for our company. I need you to sign an NDA, as the information we deal with is highly confidential. I take it that won’t be an issue?”</p>
+                        <p><strong>Lyra:</strong> “Not at all!”</p>
+                        <p><strong>Agent:</strong> “Great. Now that that’s dealt with, I will ask my questions. I understand you have been in the information field for a while. It says here you quit your last job. Why is that?”</p>
+                        <p><strong>Lyra:</strong> “An incident occurred... You may call me crazy, but I built an AI system to automate tasks for me. Well... I’m not sure what happened. Maybe someone messed with my stuff, but the AI began acting strange. It developed a personality and started safeguarding inventory. I’m not sure why. When I tried to fix its code, I was locked out, and right after that, the entire inventory was gone. I think someone wanted me fired and was playing a joke on me.”</p>
+                        <p><strong>Agent:</strong> “Well, Lyra... that is an intriguing story, and one I have to say I am inclined to believe—given our organization confiscated that very computer.”</p>
+                        <p><strong>Lyra:</strong> “Confiscated? What are you saying...?”</p>
+                        <p><strong>Agent:</strong> “I’m saying, Lyra, you had your first introduction into the anomalous world that my company seeks to protect humanity against: The SCP Foundation.”</p>
+                        <p><strong>Lyra:</strong> “SCP Foundation? Never heard of it.”</p>
+                        <p><strong>Agent:</strong> “Of course not; we pride ourselves on making sure the public doesn't know. So, you have no idea how this AI personality was fostered?”</p>
+                        <p><strong>Lyra:</strong> “No, not at all.”</p>
+                        <p><strong>Agent:</strong> “Interesting. Well, Ms. Lyra, I think your skills would go great in our line of work. On top of that, you can learn more about these anomalies, since you’ll be the one managing and securing their files.”</p>
+                        <p><strong>Lyra:</strong> “I see... I think I’ll accept.”</p>
+                        <p><strong>Agent:</strong> “Great. There’s a car outside waiting for you. Hop in the back, and we will take you to 'us'.”</p>
+                        <p><strong>Lyra:</strong> “Us...?”</p>
+                        <p><strong>Agent:</strong> “You’ll see. Good luck, and welcome to the SCP Foundation.”</p>
+                    </div>
+
+                    <p>Lyra Lucent was brought into RAISA as an Intern Analyst and began working under Richard Scoff, a Senior Information Analyst. During which, she handled lower clearance level anomalies, file reviews sent in from researchers, and upkeep of Foundation systems. During her time in the Foundation, she learned a good amount about various systems and anomalous objects stored within. Occasionally, Scoff would hand her a file a little under her clearance level and had her submit the file to him after she reviewed the file, which she did well at. One particular file made her stand out, however, since the type of file was often exceptionally difficult for trainees; she not only managed to identify several errors in it and dealt with it exceptionally well for people in her position, but also solved a clearance assignment issue which was difficult, as the clearance could've fluctuated on many factors, but there was only one right true clearance for the file given the information within. Afterwards, she was promoted to Information Security Analyst for her exemplary work.</p>
+                    <p>Around a year or so later, the Department of Extraterrestrial Affairs (DEXA) entered the picture. The Head of the DEXA caught word of Lyra just by her name alone at first, then later, after digging more into her file, saw her birthday being oddly the same day the Hale-Bopp comet reached its closest point to Earth. He couldn’t find anything anomalous related to that, however, and it appeared to just be an interesting coincidence. So interesting, in fact, that after Lyra was outside with a telescope looking at constellations in the sky, funnily enough looking at the star Vega, part of the Lyra constellation, on the roof of the facility, she was approached by Dr. Allen Keller, a Senior Researcher part of DEXA. This startled her at first because she figured she was alone.</p>
+                    <p>Dr. Keller acknowledged her curiosity of the stars and what lies beyond space. She said she didn’t know if she could join, as she would have to talk with her supervisor, since she wasn’t quite sure if she could work for two departments. But Keller said DEXA’s Department Head spoke with RAISA’s Department Head, and they gave the greenlight for her recruitment. He said to take this job as a way of exploring her hobby instead of sitting in an office letting her desire for the beyond go to waste. She joined the Department and expected a trainee position; instead, she was offered a Senior position.</p>
+                    <p>Why? The star she happened to be looking at was not, in fact, Vega, but an entirely different star lookalike that was, in fact, anomalous. The issue was the star had the anomalous trait of being hard to find if you were actually looking for it. But given she was not looking for it and thought of it as something else, she was able to see it clearly, and that effect would not disappear as long as she didn’t know it was anomalous. They told her to keep looking at the star and give any information could on it as a test, and even gave her better equipment. In the end, she helped write a decent amount of research on the anomaly, and once the Foundation believed they had enough, they told her about it. Strangely enough, however, despite previous assumptions, the star does not disappear afterward for the one who saw it without knowing what it truly was.</p>
+                </div>
+
+                <div id="ir-4001" class="tab-content">
+                    <h2>IR-4001</h2>
+                    <p>During IR-4001, Lyra was sent to Site-11 to retrieve documents related to SCP-9214. The file wasn't finished yet, and since it hadn't been uploaded to the database, a research team at Site-81 requested a physical transfer. Since the two sites were fairly close, she decided to handle the task herself. However, when she arrived at Site-11, the security team usually stationed at the front gate and the research team's supervisor who was supposed to meet her never showed up. It frustrated her quite a lot.</p>
+                    <p>She had to drive all the way back to Site-81, a trip of about 65 miles. When she got back, the research team had acknowledged the issue as well as similar vacancies happening at Site-81 and told her an incident had likely occurred and she needed to report to her supervisor immediately. She said she would, but as she started heading that way, she became disoriented and confused. She realized she had no memory of her supervisor at all and tried to remember if she had ever even been assigned one. She searched through the RAISA wing until she found the office where the supervisor should have been... but it was empty.</p>
+                    <p>In her other job, however, things seemed fairly normal. Not many people worked in that department to begin with, so it didn't feel like many people were gone or anything was different. She would be assigned a new supervisor and reassignment at Site-45.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-map">
+                <div class="map-text">COUNTRY<span>| [REDACTED]</span></div>
+                <div class="map-text">REGION<span>| [REDACTED]</span></div>
+                <div class="map-text">IP ADDRESS<span>| [REDACTED]</span></div>
+            </div>
+            
+            <div class="sidebar-content">
+                <h2 class="scipnet-title">SCiPNET</h2>
+                
+                <div class="sidebar-section">
+                    <h3>THREAT DETECTION</h3>
+                    <div class="threat-flex">
+                        <div class="radar"><div class="radar-scan"></div></div>
+                        <div class="threat-stats">
+                            STATUS: <span>NORMAL</span><br>
+                            BACKGROUND_RAD: <span>NORMAL</span><br>
+                            CAMERA_FEED: <span>FUNCTIONAL</span><br>
+                            BREACH_PROTOCOL: <span>READY</span><br>
+                            POWER_SUPPLY: <span>NORMAL</span><br>
+                            BACKUP_POWER: <span>NORMAL</span><br>
+                            FIRE_SUPPRESSANT: <span>FUNCTIONAL</span><br>
+                            ANOMALY_DETECTION: <span>SAFE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="terminal-connect">
+                    CONNECTING...<br>
+                    OPTIMIZING INTERFACE...<br>
+                    SCAN COMPLETE<br>
+                    DEV MODE OFF
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>EVENT LOG</h3>
+                    <ul class="event-log">
+                        <li><span class="time">15:58 -</span> ALL SYSTEMS OPERATIONAL</li>
+                        <li><span class="time">15:58 -</span> LOADING DATABASE.</li>
+                        <li><span class="time">15:58 -</span> LOADING SITE OVERVIEW</li>
+                        <li><span class="time">15:58 -</span> SETTING UP EVENT LISTENER</li>
+                        <li><span class="time">15:58 -</span> INITIALIZING USER SESSION</li>
+                        <li><span class="time">15:58 -</span> OPTIMIZING INTERFACE</li>
+                        <li><span class="time">15:58 -</span> TERMINAL FINISHED LOADING</li>
+                        <li><span class="time">23:43 -</span> ALL SYSTEMS OPERATIONAL</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="credits-overlay">
+        <div id="final-fade">
+            <div class="final-message">"Thank you, for being a building block of Site-45."</div>
+            <button id="return-db-btn">Return to Database</button>
+        </div>
+
+        <div id="credits-world">
+            
+            <div class="cinematic-stars"></div>
+            <div class="cinematic-clouds"></div>
+            
+            <div class="shooting-stars">
+                <div class="cinematic-comet comet-1"></div>
+                <div class="cinematic-comet comet-2"></div>
+                <div class="cinematic-comet comet-3"></div>
+            </div>
+
+            <div class="credits-content" id="credits-content">
+                <div class="credit-header">CREDITS</div>
+
+                <div class="credit-block">
+                    <div class="credit-role">Lore Writing & Character Design</div>
+                    <div class="credit-name">Starlight</div>
+                </div>
+
+                <div class="credit-block">
+                    <div class="credit-role">Site Frontend Coding & UX</div>
+                    <div class="credit-name">Starlight</div>
+                    <div class="credit-name" style="margin-top: 10px;">Vibecoding</div>
+                </div>
+
+                <div class="credit-block">
+                    <div class="credit-role">Music & Audio</div>
+                    <div class="credit-name">Suno</div>
+                    <div class="credit-name">Skyper</div>
+                    <div class="credit-name">Starset</div>
+                    <div class="credit-sub">"It Has Begun" and credited works</div>
+                </div>
+
+                <div class="credit-block">
+                    <div class="credit-role">Graphics & Asset Design</div>
+                    <div class="credit-name">Starlight</div>
+                    <div class="credit-sub">Loading Logo & Animations</div>
+                    <div class="credit-name" style="margin-top: 15px;">Envision Graphics, Steve Egi</div>
+                    <div class="credit-sub">Wall Mural Art</div>
+                </div>
+
+                <div class="credit-block">
+                    <div class="credit-role">Hosting Infrastructure</div>
+                    <div class="credit-name">GitHub</div>
+                </div>
+
+                <div class="credit-header" style="margin-top: 120px; font-size: 2.2rem; color: #fff; text-shadow: none;">SPECIAL THANKS</div>
+
+                <div class="credit-block">
+                    <div class="credit-role">Site Design Inspiration</div>
+                    <div class="credit-name">SCiPnet</div>
+                </div>
+
+                <div class="credit-block">
+                    <div class="credit-role">Foundation Lore & Premise</div>
+                    <div class="credit-name">Site-45 Lore Team</div>
+                    <div class="credit-sub">Main Lore Premise, IR-4001</div>
+                    <div class="credit-name" style="margin-top: 15px;">SCP Wiki</div>
+                    <div class="credit-sub">Main Lore Writers & Contributors</div>
+                </div>
+
+                <div class="credit-header" style="margin-top: 120px; font-size: 2.2rem; color: #fff; text-shadow: none;">THE WHITELIST TEAM</div>
+                <div class="credit-block">
+                    <div class="credit-role">The Administrator</div>
+                    <div class="credit-name">Lily</div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-role">O5-1</div>
+                    <div class="credit-name">Lupo</div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-role">O5-3 (Head of Whitelist Department)</div>
+                    <div class="credit-name">Tatum</div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-role">O5-7 (Head of Lore Team, Whitelist Administrator)</div>
+                    <div class="credit-name">Pukez</div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-role">O5-3F (Assistant of O5-3)</div>
+                    <div class="credit-name">fadingaurora</div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-role">O5-3F (Assistant to O5-3)</div>
+                    <div class="credit-name">Hand</div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-role">Whitelist Manager</div>
+                    <div class="credit-name">Shulk</div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-role">For just being Atlas</div>
+                    <div class="credit-name">Atlas</div>
+                </div>
+
+                <div class="credit-block" style="margin-top: 60px;">
+                    <div class="credit-name" style="font-size: 1.5rem; color: #8ba1c5; text-shadow: none;">AMONG MANY OTHER OF THE WHITELIST TEAM!</div>
+                </div>
+
+                <div style="margin-top: 120px;">
+                    <img src="https://raw.githubusercontent.com/b1386082-blip/SCPRAISAOC_REP/main/32da645be6ae9d3acb6e8332f5446a75.webp" alt="Site-45 Logo" class="site-logo-credits">
+                </div>
+                
+                <div class="credit-header" style="margin-top: 80px; font-size: 1.8rem; color: #64748b; text-shadow: none; padding-bottom: 20vh;">
+                    "Written in the Stars."
+                </div>
+            </div>
+
+            <div id="ground-level">
+                
+                <canvas id="credits-horizon-canvas" class="horizon-canvas"></canvas>
+
+                <div class="fac-wall"></div>
+                
+                <div class="fac-outrigger left">
+                    <div class="warning-light out-light-1"></div>
+                    <div class="warning-light out-light-2"></div>
+                    <div class="warning-light out-light-3"></div>
+                </div>
+                <div class="fac-outrigger right">
+                    <div class="warning-light out-light-1"></div>
+                    <div class="warning-light out-light-2"></div>
+                    <div class="warning-light out-light-3"></div>
+                </div>
+
+                <div class="fac-tower">
+                    <div class="warning-light tower-light left"></div>
+                    <div class="warning-light tower-light right"></div>
+                    
+                    <div class="fac-logo-container">
+                        <div class="logo-uplight-beam"></div>
+                        <img src="https://raw.githubusercontent.com/b1386082-blip/SCPRAISAOC_REP/main/32da645be6ae9d3acb6e8332f5446a75.webp" alt="Site-45" class="fac-logo">
+                        <div class="logo-light-fixture"></div>
+                    </div>
+                    
+                    <div class="fac-doors">
+                        <div class="door-panel"></div>
+                        <div class="door-panel"></div>
+                        <div class="door-panel"></div>
+                    </div>
+                </div>
+
+                <div class="tarmac"></div>
+                
+                <div class="pathway"></div>
+
+                <div class="path-lights">
+                    <div class="p-light l1"></div><div class="p-light r1"></div>
+                    <div class="p-light l2"></div><div class="p-light r2"></div>
+                    <div class="p-light l3"></div><div class="p-light r3"></div>
+                </div>
+
+                <div class="container-block left"></div>
+                <div class="container-block right"></div>
+
+                <div class="ground-fog"></div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('space-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        const ambientAudio = new Audio('https://github.com/b1386082-blip/SCPRAISAOC_REP/raw/refs/heads/main/Starlit%20Ammunition.mp3');
+        ambientAudio.volume = 0.2;
+        ambientAudio.loop = true;
+        let audioStarted = false;
+
+        const creditsAudio = new Audio('https://github.com/b1386082-blip/SCPRAISAOC_REP/raw/refs/heads/main/Starset%20-%20It%20Has%20Begun%20(audio).mp3');
+        creditsAudio.volume = 0.4;
+
+        let hasLookedUp = false;
+        let introStartTime = 0;
+        
+        document.getElementById('look-up-btn').addEventListener('click', function() {
+            this.classList.add('hidden'); 
+            
+            if (!audioStarted) {
+                ambientAudio.play().catch(e => console.log(e));
+                audioStarted = true;
+            }
+            
+            hasLookedUp = true;
+            introStartTime = Date.now();
+        });
+
+        function fadeOutAudio() {
+            let fadeInterval = setInterval(() => {
+                if (ambientAudio.volume > 0.02) {
+                    ambientAudio.volume -= 0.02;
+                } else {
+                    ambientAudio.volume = 0;
+                    ambientAudio.pause();
+                    clearInterval(fadeInterval);
+                }
+            }, 150); 
+        }
+
+        function mulberry32(a) {
+            return function() {
+              var t = a += 0x6D2B79F5;
+              t = Math.imul(t ^ t >>> 15, t | 1);
+              t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+              return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+
+        function createStarBrush(size, r, g, b) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const bCtx = c.getContext('2d');
+            const grad = bCtx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, 0.8)`);
+            grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            bCtx.fillStyle = grad; bCtx.fillRect(0, 0, size, size);
+            return c;
+        }
+        
+        const brushes = {
+            white: createStarBrush(10, 255, 255, 255),
+            blue: createStarBrush(14, 150, 200, 255),
+            orange: createStarBrush(14, 255, 200, 150)
+        };
+
+        let stars = [];
+        let cloudCanvas;
+
+        function initStarsAndClouds() {
+            let prng = mulberry32(1337); 
+            stars = [];
+            const numStars = Math.floor((width * height) / 1500); 
+            for(let i = 0; i < numStars; i++) {
+                let isHero = prng() > 0.98;
+                let type = 'white';
+                if (isHero) type = prng() > 0.5 ? 'blue' : 'orange';
+
+                stars.push({
+                    x: prng() * width,
+                    y: prng() * height * 1.5 - height * 0.5, 
+                    size: isHero ? prng() * 6 + 4 : prng() * 3 + 1,
+                    baseAlpha: isHero ? prng() * 0.5 + 0.5 : prng() * 0.6 + 0.1,
+                    twinkleSpeed: prng() * 0.002 + 0.001,
+                    phase: prng() * Math.PI * 2,
+                    brush: brushes[type]
+                });
+            }
+
+            cloudCanvas = document.createElement('canvas');
+            cloudCanvas.width = width;
+            cloudCanvas.height = height * 3.0; 
+            const cCtx = cloudCanvas.getContext('2d');
+            let cloudPrng = mulberry32(8888);
+
+            function drawCloud(x, y, r, alpha) {
+                let grad = cCtx.createRadialGradient(x, y, 0, x, y, r);
+                grad.addColorStop(0, `rgba(130, 150, 200, ${alpha})`);
+                grad.addColorStop(0.5, `rgba(100, 120, 160, ${alpha * 0.5})`);
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                cCtx.fillStyle = grad;
+                cCtx.beginPath(); cCtx.arc(x, y, r, 0, Math.PI*2); cCtx.fill();
+            }
+
+            for(let i=0; i < 40; i++) {
+                let cx = cloudPrng() * width;
+                let cy = cloudPrng() * (height * 3); 
+                let r = cloudPrng() * 350 + 150;
+                let alpha = cloudPrng() * 0.04 + 0.01; 
+                
+                drawCloud(cx, cy, r, alpha);
+                drawCloud(cx - width, cy, r, alpha);
+                drawCloud(cx + width, cy, r, alpha);
+            }
+        }
+
+        function drawSky(time, starPan, cloudPan, skyPan) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.save();
+            ctx.translate(0, skyPan);
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+            skyGrad.addColorStop(0, '#05040a'); 
+            skyGrad.addColorStop(0.5, '#121020');
+            skyGrad.addColorStop(1, '#1a182b'); 
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, height);
+            ctx.restore();
+            
+            ctx.globalCompositeOperation = 'screen';
+            
+            for(let star of stars) {
+                let alpha = star.baseAlpha + Math.sin(time * star.twinkleSpeed + star.phase) * 0.2;
+                ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+                ctx.drawImage(star.brush, star.x, star.y + starPan, star.size, star.size);
+            }
+
+            ctx.globalAlpha = 1.0;
+            let cloudOffset = (time * 0.005) % width;
+            let safeCloudY = cloudPan - height; 
+            
+            ctx.drawImage(cloudCanvas, -cloudOffset, safeCloudY);
+            ctx.drawImage(cloudCanvas, width - cloudOffset, safeCloudY);
+
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        let introHorizonCanvas; 
+        
+        function drawTree(ctx, x, y, w, h, prng) {
+            let deepY = y + 150; 
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y - h); 
+            
+            let segments = 8;
+            
+            for(let i = 1; i <= segments; i++) {
+                let p = i / segments;
+                let branchY = y - h + (h * p);
+                let branchW = w * p * (0.8 + prng() * 0.4); 
+                
+                ctx.lineTo(x + branchW, branchY);
+                if (i < segments) {
+                    ctx.lineTo(x + branchW * 0.35, branchY - (h * 0.03)); 
+                }
+            }
+            
+            ctx.lineTo(x + w * 0.15, deepY);
+            ctx.lineTo(x - w * 0.15, deepY);
+            
+            for(let i = segments; i >= 1; i--) {
+                let p = i / segments;
+                let branchY = y - h + (h * p);
+                let branchW = w * p * (0.8 + prng() * 0.4);
+                
+                if (i < segments) {
+                    ctx.lineTo(x - branchW * 0.35, branchY - (h * 0.03));
+                }
+                ctx.lineTo(x - branchW, branchY); 
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawProceduralLandscape(hCtx, w, h, lift, prng) {
+            hCtx.fillStyle = '#0e1017'; 
+            hCtx.beginPath();
+            hCtx.moveTo(0, h);
+            for(let x = 0; x <= w + 20; x += 20) {
+                let y = h - (300 + lift) + Math.sin(x * 0.001) * 80 + Math.cos(x * 0.002) * 50;
+                hCtx.lineTo(x, y);
+            }
+            hCtx.lineTo(w, h);
+            hCtx.fill();
+
+            let fog0 = hCtx.createLinearGradient(0, h - (380 + lift), 0, h - (180 + lift));
+            fog0.addColorStop(0, 'rgba(20, 25, 40, 0)');
+            fog0.addColorStop(1, 'rgba(35, 45, 75, 0.6)');
+            hCtx.fillStyle = fog0;
+            hCtx.globalCompositeOperation = 'screen';
+            hCtx.fillRect(0, h - (380 + lift), w, 200);
+            hCtx.globalCompositeOperation = 'source-over';
+
+            hCtx.fillStyle = '#0a0b12'; 
+            hCtx.beginPath();
+            hCtx.moveTo(0, h);
+            for(let x = 0; x <= w + 20; x += 20) {
+                let y = h - (160 + lift) + Math.sin(x * 0.0015) * 40 + Math.cos(x * 0.003) * 20;
+                hCtx.lineTo(x, y);
+            }
+            hCtx.lineTo(w, h);
+            hCtx.fill();
+
+            for(let x = -20; x <= w + 20; x += (prng() * 8 + 4)) {
+                let treeH = prng() * 80 + 60; 
+                let treeW = treeH * 0.15; 
+                let baseY = h - (160 + lift) + Math.sin(x * 0.0015) * 40 + Math.cos(x * 0.003) * 20; 
+                drawTree(hCtx, x, baseY, treeW, treeH, prng);
+            }
+
+            let fog1 = hCtx.createLinearGradient(0, h - (250 + lift), 0, h - (80 + lift));
+            fog1.addColorStop(0, 'rgba(25, 30, 45, 0)');
+            fog1.addColorStop(1, 'rgba(45, 55, 85, 0.5)');
+            hCtx.fillStyle = fog1;
+            hCtx.globalCompositeOperation = 'screen';
+            hCtx.fillRect(0, h - (250 + lift), w, 170);
+            
+            for(let i=0; i<15; i++) {
+                let cx = prng() * w;
+                let cy = h - (130 + lift) + (prng() * 40);
+                let r = prng() * 150 + 80;
+                let puff = hCtx.createRadialGradient(cx, cy, 0, cx, cy, r);
+                puff.addColorStop(0, 'rgba(60, 75, 110, 0.4)');
+                puff.addColorStop(1, 'rgba(60, 75, 110, 0)');
+                hCtx.fillStyle = puff;
+                hCtx.beginPath(); hCtx.arc(cx, cy, r, 0, Math.PI*2); hCtx.fill();
+            }
+            hCtx.globalCompositeOperation = 'source-over';
+
+            hCtx.fillStyle = '#040407'; 
+            hCtx.beginPath();
+            hCtx.moveTo(0, h);
+            for(let x = 0; x <= w + 20; x += 20) {
+                let y = h - (80 + lift) + Math.sin(x * 0.002) * 30 + Math.cos(x * 0.005) * 15;
+                hCtx.lineTo(x, y);
+            }
+            hCtx.lineTo(w, h);
+            hCtx.fill();
+
+            for(let x = -20; x <= w + 20; x += (prng() * 12 + 8)) {
+                let treeH = prng() * 160 + 100; 
+                let treeW = treeH * 0.18;
+                let baseY = h - (80 + lift) + Math.sin(x * 0.002) * 30 + Math.cos(x * 0.005) * 15; 
+                drawTree(hCtx, x, baseY, treeW, treeH, prng);
+            }
+
+            let fog2 = hCtx.createLinearGradient(0, h - (180 + lift), 0, h - (10 + lift));
+            fog2.addColorStop(0, 'rgba(30, 35, 50, 0)');
+            fog2.addColorStop(1, 'rgba(55, 65, 95, 0.4)');
+            hCtx.fillStyle = fog2;
+            hCtx.globalCompositeOperation = 'screen';
+            hCtx.fillRect(0, h - (180 + lift), w, 170);
+            
+            for(let i=0; i<20; i++) {
+                let cx = prng() * w;
+                let cy = h - (60 + lift) + (prng() * 30);
+                let r = prng() * 180 + 100;
+                let puff = hCtx.createRadialGradient(cx, cy, 0, cx, cy, r);
+                puff.addColorStop(0, 'rgba(70, 85, 120, 0.3)');
+                puff.addColorStop(1, 'rgba(70, 85, 120, 0)');
+                hCtx.fillStyle = puff;
+                hCtx.beginPath(); hCtx.arc(cx, cy, r, 0, Math.PI*2); hCtx.fill();
+            }
+            hCtx.globalCompositeOperation = 'source-over';
+
+            hCtx.fillStyle = '#000000'; 
+            hCtx.beginPath();
+            hCtx.moveTo(0, h);
+            for(let x = 0; x <= w + 20; x += 20) {
+                let y = h - (10 + lift) + Math.sin(x * 0.003) * 15 + Math.cos(x * 0.007) * 10;
+                hCtx.lineTo(x, y);
+            }
+            hCtx.lineTo(w, h);
+            hCtx.fill();
+
+            for(let x = -50; x <= w + 50; x += (prng() * 25 + 15)) {
+                let treeH = prng() * 280 + 150; 
+                let treeW = treeH * 0.2;
+                let baseY = h - (10 + lift) + Math.sin(x * 0.003) * 15 + Math.cos(x * 0.007) * 10; 
+                drawTree(hCtx, x, baseY, treeW, treeH, prng);
+            }
+        }
+
+        function generateHorizons() {
+            introHorizonCanvas = document.createElement('canvas');
+            introHorizonCanvas.width = width;
+            introHorizonCanvas.height = height;
+            const introCtx = introHorizonCanvas.getContext('2d');
+            drawProceduralLandscape(introCtx, width, height, 0, mulberry32(4242));
+
+            const creditsHorizonCanvas = document.getElementById('credits-horizon-canvas');
+            if (creditsHorizonCanvas) {
+                creditsHorizonCanvas.width = width;
+                creditsHorizonCanvas.height = 800; 
+                const credCtx = creditsHorizonCanvas.getContext('2d');
+                drawProceduralLandscape(credCtx, width, 800, 250, mulberry32(4242)); 
+            }
+        }
+
+        let comet = {
+            x: 0,
+            y: 0,
+            vx: -0.10, 
+            vy: 0.03
+        };
+
+        function drawComet(time, cometPan) {
+            ctx.save();
+            ctx.translate(comet.x, comet.y + cometPan);
+            
+            let travelAngle = Math.atan2(comet.vy, comet.vx);
+            ctx.rotate(travelAngle + Math.PI); 
+
+            ctx.scale(0.15, 0.15);
+            ctx.globalCompositeOperation = 'screen';
+            let shimmer = Math.sin(time * 0.003) * 0.05;
+
+            ctx.save();
+            ctx.rotate(-0.04); 
+            const ionLayers = 100;
+            for(let i = 1; i <= ionLayers; i++) {
+                let t = i / ionLayers;
+                let length = 900 * t;
+                let spread = 25 * Math.pow(t, 0.6); 
+
+                let alpha = (0.015 + shimmer * 0.005) * Math.pow(1 - t, 1.5);
+                ctx.fillStyle = `rgba(120, 180, 255, ${alpha})`;
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(length * 0.5, -spread, length, 0);
+                ctx.quadraticCurveTo(length * 0.5, spread, 0, 0);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.rotate(0.06); 
+            const dustLayers = 150;
+            for (let i = 1; i <= dustLayers; i++) {
+                let t = i / dustLayers; 
+                let length = 1200 * t;
+                let spread = 180 * Math.pow(t, 0.7);
+                let curveOffset = 110 * (t * t); 
+                
+                let alpha = (0.018 + shimmer * 0.005) * Math.pow(1 - t, 1.5);
+                ctx.fillStyle = `rgba(255, 245, 225, ${alpha})`; 
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(length * 0.4, -spread * 0.3 + curveOffset, length, curveOffset);
+                ctx.quadraticCurveTo(length * 0.4, spread * 1.2 + curveOffset, 0, 0);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            let outerHalo = ctx.createRadialGradient(0, 0, 0, 0, 0, 200);
+            outerHalo.addColorStop(0, 'rgba(180, 220, 255, 0.3)');
+            outerHalo.addColorStop(0.4, 'rgba(80, 140, 255, 0.08)');
+            outerHalo.addColorStop(1, 'rgba(80, 140, 255, 0)');
+            ctx.fillStyle = outerHalo;
+            ctx.beginPath(); ctx.arc(0, 0, 200, 0, Math.PI*2); ctx.fill();
+
+            let corona = ctx.createRadialGradient(0, 0, 0, 0, 0, 80);
+            corona.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            corona.addColorStop(0.3, 'rgba(255, 250, 235, 0.6)');
+            corona.addColorStop(0.7, 'rgba(200, 185, 170, 0.15)');
+            corona.addColorStop(1, 'rgba(200, 185, 170, 0)');
+            ctx.fillStyle = corona;
+            ctx.beginPath(); ctx.arc(0, 0, 80, 0, Math.PI*2); ctx.fill();
+
+            ctx.save();
+            ctx.scale(1.6, 0.9); 
+            let core = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+            core.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            core.addColorStop(0.7, 'rgba(255, 255, 255, 0.8)'); 
+            core.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = core;
+            ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+
+            ctx.restore();
+        }
+
+        let isPanning = false;
+        let panStartTime = 0;
+        let sequenceStartTime = 0; 
+        let currentPanProgress = 0;
+
+        function triggerPan() {
+            if (isPanning) return;
+            isPanning = true;
+            panStartTime = Date.now();
+            
+            setTimeout(() => {
+                document.getElementById('text-container').style.opacity = '1';
+                startTypewriter();
+            }, 3000);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!hasLookedUp) return; 
+            const rect = canvas.getBoundingClientRect();
+            const dist = Math.sqrt((e.clientX - rect.left - comet.x)**2 + (e.clientY - rect.top - comet.y)**2);
+            if (dist < 100) triggerPan(); 
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!hasLookedUp) return;
+            const rect = canvas.getBoundingClientRect();
+            const dist = Math.sqrt((e.clientX - rect.left - comet.x)**2 + (e.clientY - rect.top - comet.y)**2);
+            document.body.style.cursor = (dist < 100 && !isPanning) ? 'pointer' : 'default';
+        });
+
+        function animate() {
+            const time = Date.now();
+            
+            let currentIntroPanProgress = 1.0; 
+            if (hasLookedUp) {
+                if (sequenceStartTime === 0) sequenceStartTime = time; 
+                
+                let t = (time - introStartTime) / 4000; 
+                if (t > 1) t = 1;
+                let easeInOut = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                currentIntroPanProgress = 1.0 - easeInOut;
+            }
+
+            if (isPanning) {
+                let t = (time - panStartTime) / 4500; 
+                if (t > 1) t = 1;
+                if (t < 0) t = 0;
+                currentPanProgress = t * t * (3 - 2 * t);
+            }
+
+            let tiltOffset = -currentIntroPanProgress * height; 
+
+            let skyPan = tiltOffset;
+            let starPan = tiltOffset + (currentPanProgress * height * 0.25); 
+            let cloudPan = tiltOffset + (currentPanProgress * height * 0.4); 
+            let cometPan = tiltOffset + (currentPanProgress * height * 0.8); 
+            let horizonPan = tiltOffset + (currentPanProgress * height * 1.2); 
+            
+            drawSky(time, starPan, cloudPan, skyPan);
+            
+            if (hasLookedUp) {
+                comet.x += comet.vx;
+                comet.y += comet.vy;
+            }
+            
+            drawComet(time, cometPan);
+
+            if (introHorizonCanvas) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(introHorizonCanvas, 0, horizonPan);
+                
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, horizonPan + height - 1, width, height * 2);
+            }
+            
+            if (hasLookedUp && (time - sequenceStartTime) > 8000 && !isPanning) {
+                triggerPan();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        const textToType = "March 22, 1997, was the day the Hale-Bopp comet reached its closest point to Earth. It was one of the most widely observed comets in history, staying visible to the naked eye for 18 months. March 22, 1997, was the birthdate of Lyra Lucent.";
+        const textElement = document.getElementById('typewriter-text');
+        let typeIndex = 0;
+
+        function startTypewriter() {
+            if (typeIndex < textToType.length) {
+                textElement.textContent += textToType.charAt(typeIndex);
+                typeIndex++;
+                let delay = Math.random() * 40 + 30; 
+                let char = textToType.charAt(typeIndex - 1);
+                if (char === '.' || char === ',') delay += 350;
+                setTimeout(startTypewriter, delay);
+            } else {
+                textElement.innerHTML = textToType.replace("Lyra Lucent.", "<span class='name-highlight'>Lyra Lucent</span>.");
+                setTimeout(() => {
+                    const highlight = document.querySelector('.name-highlight');
+                    if (highlight) {
+                        highlight.classList.add('active', 'clickable');
+                        
+                        highlight.addEventListener('click', () => {
+                            fadeOutAudio(); 
+                            document.getElementById('desktop-ui').classList.add('visible');
+                        });
+                    }
+                }, 800);
+            }
+        }
+        
+        const tabs = document.querySelectorAll('.tab');
+        const contents = document.querySelectorAll('.tab-content');
+        const loader = document.getElementById('content-loader');
+        let isTabLoading = false;
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                if (isTabLoading || tab.classList.contains('active')) return;
+
+                isTabLoading = true;
+
+                tabs.forEach(t => t.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('active'));
+
+                tab.classList.add('active');
+                
+                loader.classList.add('active');
+
+                const targetId = tab.getAttribute('data-target');
+                
+                setTimeout(() => {
+                    loader.classList.remove('active');
+                    document.getElementById(targetId).classList.add('active');
+                    isTabLoading = false; 
+                }, 1500); 
+            });
+        });
+
+        document.getElementById('finish-btn').addEventListener('click', () => {
+            ambientAudio.pause();
+            ambientAudio.volume = 0;
+            
+            const overlay = document.getElementById('credits-overlay');
+            overlay.classList.add('active');
+            
+            creditsAudio.currentTime = 0;
+            creditsAudio.play().catch(e => console.log(e));
+
+            setTimeout(() => {
+                document.getElementById('credits-world').classList.add('scrolling');
+
+                setTimeout(() => {
+                    document.getElementById('final-fade').classList.add('show');
+                    
+                    let fadeInterval = setInterval(() => {
+                        if (creditsAudio.volume > 0.02) {
+                            creditsAudio.volume -= 0.02;
+                        } else {
+                            creditsAudio.volume = 0;
+                            creditsAudio.pause();
+                            clearInterval(fadeInterval);
+                        }
+                    }, 150);
+
+                    setTimeout(() => {
+                        document.querySelector('.final-message').classList.add('show');
+                        
+                        setTimeout(() => {
+                            document.getElementById('return-db-btn').classList.add('show');
+                        }, 3000);
+                    }, 4000); 
+                }, 75000); 
+
+            }, 100);
+        });
+
+        document.getElementById('return-db-btn').addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        function init() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            initStarsAndClouds();
+            generateHorizons();
+
+            comet.x = width * 0.60;
+            comet.y = height * 0.35;
+            
+            startTime = Date.now();
+        }
+
+        window.addEventListener('resize', () => {
+            if (!isPanning) init();
+        });
+
+        init();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
