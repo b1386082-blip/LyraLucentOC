@@ -279,73 +279,110 @@
 
         #credits-world {
             position: absolute; top: 0; left: 0;
-            width: 100%; height: 450vh;
+            width: 100%; height: 600vh;
             background: linear-gradient(to bottom, 
-                #020108 0%,         
-                #020108 50%,        
-                #050814 75%,        
-                #0c1424 90%,        
-                #131a26 95%,        
+                #010104 0%,         
+                #020108 70%,        
+                #050814 85%,        
+                #0c1424 93%,        
+                #131a26 97%,        
                 #0a0d14 100%);      
             transform: translateY(0); 
-            transition: transform 65s linear; 
+            transition: transform 90s linear; 
         }
 
         #credits-world.scrolling {
-            transform: translateY(calc(-450vh + 100vh)); 
+            transform: translateY(calc(-600vh + 100vh)); 
         }
 
-        .cinematic-stars {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; 
+        .star-layer-1 {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-image: 
-                radial-gradient(1.5px 1.5px at 10% 10%, rgba(255,255,255,0.8) 100%, transparent),
-                radial-gradient(2px 2px at 30% 25%, rgba(255,221,170,0.8) 100%, transparent),
-                radial-gradient(1px 1px at 50% 40%, rgba(170,204,255,0.8) 100%, transparent),
-                radial-gradient(2px 2px at 70% 15%, rgba(255,255,255,0.9) 100%, transparent),
-                radial-gradient(1.5px 1.5px at 85% 60%, rgba(204,170,255,0.7) 100%, transparent),
-                radial-gradient(1px 1px at 90% 50%, rgba(255,255,255,0.6) 100%, transparent),
-                radial-gradient(1.5px 1.5px at 20% 70%, rgba(170,204,255,0.8) 100%, transparent),
-                radial-gradient(1px 1px at 60% 80%, rgba(255,221,170,0.7) 100%, transparent),
-                radial-gradient(2px 2px at 80% 90%, rgba(255,255,255,0.8) 100%, transparent),
-                radial-gradient(1px 1px at 45% 20%, rgba(204,170,255,0.8) 100%, transparent),
-                radial-gradient(1.5px 1.5px at 75% 60%, rgba(170,204,255,0.9) 100%, transparent),
-                radial-gradient(1px 1px at 40% 95%, rgba(255,255,255,0.7) 100%, transparent);
-            background-size: 250px 250px;
-            z-index: 1;
-            opacity: 0.75;
+                radial-gradient(1px 1px at 5% 15%, #ffffff 100%, transparent),
+                radial-gradient(1px 1px at 15% 75%, #ffffff 100%, transparent),
+                radial-gradient(1px 1px at 25% 45%, #ffffff 100%, transparent),
+                radial-gradient(1.5px 1.5px at 35% 85%, #ffffff 100%, transparent),
+                radial-gradient(1px 1px at 45% 25%, #ffffff 100%, transparent),
+                radial-gradient(1px 1px at 55% 65%, #ffffff 100%, transparent),
+                radial-gradient(1.5px 1.5px at 65% 5%, #ffffff 100%, transparent),
+                radial-gradient(1px 1px at 75% 55%, #ffffff 100%, transparent),
+                radial-gradient(1px 1px at 85% 95%, #ffffff 100%, transparent),
+                radial-gradient(1.5px 1.5px at 95% 35%, #ffffff 100%, transparent);
+            background-size: 150px 150px;
+            opacity: 0.6;
+            animation: twinkle 4s infinite alternate;
         }
 
-        .cinematic-clouds {
+        .star-layer-2 {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 10% 80%, #aaccff 100%, transparent),
+                radial-gradient(2px 2px at 30% 20%, #ffddaa 100%, transparent),
+                radial-gradient(2px 2px at 50% 90%, #ffffff 100%, transparent),
+                radial-gradient(2px 2px at 70% 40%, #ccaaff 100%, transparent),
+                radial-gradient(2px 2px at 90% 10%, #aaccff 100%, transparent);
+            background-size: 300px 300px;
+            opacity: 0.8;
+            animation: twinkle 6s infinite alternate-reverse;
+        }
+
+        .star-layer-3 {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(3px 3px at 20% 50%, #ffffff 100%, transparent),
+                radial-gradient(3px 3px at 60% 70%, #ffddaa 100%, transparent),
+                radial-gradient(3px 3px at 80% 30%, #aaccff 100%, transparent);
+            background-size: 500px 500px;
+            opacity: 1;
+            animation: twinkle 5s infinite alternate;
+        }
+
+        .cinematic-nebula {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: 
-                radial-gradient(circle at 20% 10%, rgba(15, 25, 50, 0.4) 0%, transparent 30%),
-                radial-gradient(circle at 80% 30%, rgba(30, 15, 40, 0.3) 0%, transparent 35%),
-                radial-gradient(circle at 50% 45%, rgba(20, 40, 60, 0.4) 0%, transparent 30%),
-                radial-gradient(circle at 30% 60%, rgba(40, 25, 20, 0.3) 0%, transparent 35%),
-                linear-gradient(to top, rgba(5,8,20, 1) 0%, rgba(5,8,20, 0.8) 20%, transparent 60%);
-            mix-blend-mode: normal;
-            filter: blur(30px);
-            z-index: 2;
+                radial-gradient(ellipse at 15% 20%, rgba(70, 30, 150, 0.15) 0%, transparent 40%),
+                radial-gradient(ellipse at 85% 45%, rgba(30, 80, 150, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 70%, rgba(150, 50, 80, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 30% 90%, rgba(40, 100, 120, 0.15) 0%, transparent 45%);
+            mix-blend-mode: screen;
+            z-index: 1;
+            opacity: 0.8;
+        }
+
+        @keyframes twinkle { 
+            0% { opacity: 0.2; } 
+            100% { opacity: 1; } 
         }
         
-        .shooting-stars {
-            position: absolute; top: 0; left: 0; width: 100%; height: 150vh;
-            overflow: hidden; pointer-events: none; z-index: 2;
+        .shooting-stars-fixed {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden; pointer-events: none; z-index: 10;
         }
+
         .cinematic-comet {
-            position: absolute; width: 250px; height: 1px;
-            background: linear-gradient(90deg, #ffffff, rgba(150, 200, 255, 0.4), transparent);
+            position: absolute; width: 350px; height: 1px;
+            background: linear-gradient(90deg, rgba(255,255,255,1), rgba(150, 200, 255, 0.4), transparent);
             opacity: 0; transform: rotate(-35deg);
+            box-shadow: 0 0 10px rgba(150, 200, 255, 0.2);
         }
+
         .cinematic-comet::before {
-            content: ''; position: absolute; left: 0; top: -1.5px; width: 4px; height: 4px;
-            background: #fff; border-radius: 50%; box-shadow: 0 0 15px 3px #fff;
+            content: ''; position: absolute; left: 0; top: -2px; width: 5px; height: 5px;
+            background: #fff; border-radius: 50%; 
+            box-shadow: 0 0 15px 4px rgba(150, 200, 255, 0.9), 0 0 30px 8px rgba(255, 255, 255, 0.5);
         }
         
+        @keyframes shoot {
+            0% { transform: translate(0, 0) rotate(-35deg); opacity: 0; }
+            10% { opacity: 1; }
+            20% { opacity: 1; }
+            100% { transform: translate(-2500px, 1750px) rotate(-35deg); opacity: 0; }
+        }
+
         .comet-1 { top: 10%; left: 80%; animation: shoot 8s infinite linear 2s; }
-        .comet-2 { top: 35%; left: 60%; animation: shoot 12s infinite linear 7s; }
-        .comet-3 { top: 5%; left: 90%; animation: shoot 15s infinite linear 1s; }
+        .comet-2 { top: 35%; left: 110%; animation: shoot 12s infinite linear 7s; }
+        .comet-3 { top: -10%; left: 70%; animation: shoot 10s infinite linear 1s; }
+        .comet-4 { top: 50%; left: 120%; animation: shoot 15s infinite linear 12s; }
 
         .credits-content {
             position: absolute; 
@@ -403,7 +440,7 @@
 
         .fac-outrigger {
             position: absolute; bottom: 420px; 
-            width: 40vw; height: 15px;
+            width: 100vw; height: 15px;
             background: #1a2230; z-index: 4; border-bottom: 3px solid #0a0d14;
         }
         .fac-outrigger.left { right: 50%; margin-right: 160px; } 
@@ -455,9 +492,14 @@
         }
         .tower-light.left { top: -4px; left: 12px; }
         .tower-light.right { top: -4px; right: 12px; }
-        .out-light-1 { top: -4px; left: 10%; }
-        .out-light-2 { top: -4px; left: 50%; }
-        .out-light-3 { top: -4px; right: 10%; }
+        
+        .fac-outrigger.left .out-light-1 { top: -4px; left: auto; right: 80px; }
+        .fac-outrigger.left .out-light-2 { top: -4px; left: auto; right: 250px; }
+        .fac-outrigger.left .out-light-3 { top: -4px; left: auto; right: 420px; }
+
+        .fac-outrigger.right .out-light-1 { top: -4px; right: auto; left: 80px; }
+        .fac-outrigger.right .out-light-2 { top: -4px; right: auto; left: 250px; }
+        .fac-outrigger.right .out-light-3 { top: -4px; right: auto; left: 420px; }
 
         .tarmac {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 80px;
@@ -701,15 +743,11 @@
 
         <div id="credits-world">
             
-            <div class="cinematic-stars"></div>
-            <div class="cinematic-clouds"></div>
+            <div class="star-layer-1"></div>
+            <div class="star-layer-2"></div>
+            <div class="star-layer-3"></div>
+            <div class="cinematic-nebula"></div>
             
-            <div class="shooting-stars">
-                <div class="cinematic-comet comet-1"></div>
-                <div class="cinematic-comet comet-2"></div>
-                <div class="cinematic-comet comet-3"></div>
-            </div>
-
             <div class="credits-content" id="credits-content">
                 <div class="credit-header">CREDITS</div>
 
@@ -857,6 +895,13 @@
                 <div class="ground-fog"></div>
 
             </div>
+        </div>
+
+        <div class="shooting-stars-fixed">
+            <div class="cinematic-comet comet-1"></div>
+            <div class="cinematic-comet comet-2"></div>
+            <div class="cinematic-comet comet-3"></div>
+            <div class="cinematic-comet comet-4"></div>
         </div>
     </div>
 
@@ -1428,7 +1473,7 @@
                             document.getElementById('return-db-btn').classList.add('show');
                         }, 3000);
                     }, 4000); 
-                }, 75000); 
+                }, 95000); 
 
             }, 100);
         });
