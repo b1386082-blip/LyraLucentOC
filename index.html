@@ -279,20 +279,20 @@
 
         #credits-world {
             position: absolute; top: 0; left: 0;
-            width: 100%; height: 500vh;
+            width: 100%; height: 750vh; /* Massively increased world height */
             background: linear-gradient(to bottom, 
                 #010104 0%,         
-                #020108 70%,        
-                #050814 85%,        
-                #0c1424 93%,        
-                #131a26 97%,        
+                #020108 80%,        
+                #050814 90%,        
+                #0c1424 95%,        
+                #131a26 98%,        
                 #0a0d14 100%);      
             transform: translateY(0); 
-            transition: transform 75s linear; 
+            transition: transform 120s linear; /* Extended duration to match new height & maintain smooth speed */
         }
 
         #credits-world.scrolling {
-            transform: translateY(calc(-500vh + 100vh)); 
+            transform: translateY(calc(-750vh + 100vh)); 
         }
 
         .star-layer-1 {
@@ -1493,7 +1493,7 @@
                             document.getElementById('return-db-btn').classList.add('show');
                         }, 3000);
                     }, 4000); 
-                }, 80000); 
+                }, 125000); /* Adjusted delay: 120s pan + 5s hold before fading out */
 
             }, 100);
         });
